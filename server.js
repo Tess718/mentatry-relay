@@ -99,5 +99,5 @@ app.post('/ingest/:roomId', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Mentatry SSE Relay listening on port ${PORT}`);
-  console.log(`Allowed CORS origin: ${ALLOWED_ORIGIN}`);
+  console.log(`Allowed CORS origins: ${ALLOWED_ORIGINS.join(', ')}`);
 });
