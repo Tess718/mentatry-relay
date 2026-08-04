@@ -7,9 +7,14 @@ app.use(express.json());
 // In-memory state: map of roomId -> array of Express response objects
 const clients = new Map();
 
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || 'http://localhost:3000')
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
   .split(',')
-  .map(origin => origin.trim());
+  .map(origin => origin.trim().replace(/\/$/, '')); // Strip trailing slash just in case
+
+// Always allow localhost for local development
+if (!ALLOWED_ORIGINS.includes('http://localhost:3000')) {
+  ALLOWED_ORIGINS.push('http://localhost:3000');
+}
 
 const INGEST_SECRET = process.env.INGEST_SECRET;
 const PORT = process.env.PORT || 4000;
