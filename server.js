@@ -11,11 +11,6 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
   .split(',')
   .map(origin => origin.trim().replace(/\/$/, '')); // Strip trailing slash just in case
 
-// Always allow localhost for local development
-if (!ALLOWED_ORIGINS.includes('http://localhost:3000')) {
-  ALLOWED_ORIGINS.push('http://localhost:3000');
-}
-
 const INGEST_SECRET = process.env.INGEST_SECRET;
 const PORT = process.env.PORT || 4000;
 
@@ -51,7 +46,8 @@ app.get('/subscribe/:roomId', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no' // Prevent Nginx and other proxies from buffering SSE
   });
 
   // Send an initial connected message
@@ -64,8 +60,14 @@ app.get('/subscribe/:roomId', (req, res) => {
   const roomClients = clients.get(roomId);
   roomClients.push(res);
 
+  // Heartbeat to prevent proxies/ALBs from closing idle connections (runs every 30s)
+  const heartbeat = setInterval(() => {
+    res.write(': keepalive\n\n'); // SSE comment, ignored by client parser but keeps TCP alive
+  }, 30000);
+
   // Remove client on disconnect
   req.on('close', () => {
+    clearInterval(heartbeat);
     const updatedClients = clients.get(roomId)?.filter(client => client !== res) || [];
     if (updatedClients.length === 0) {
       clients.delete(roomId);
